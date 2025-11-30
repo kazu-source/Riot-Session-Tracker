@@ -164,20 +164,20 @@ async function handleScheduledLpCapture(env: Env): Promise<void> {
         summonerRegion
       );
 
-      const currentLp = await riotClient.getCurrentSoloQueueLp(
+      const rankData = await riotClient.getCurrentSoloQueueLp(
         account.puuid,
         summonerRegion
       );
 
       const newState: LpCaptureState = {
         wasLive: true,
-        capturedLp: currentLp,
+        capturedLp: rankData.lp,
         capturedAt: new Date().toISOString(),
         streamStartedAt: streamInfo.started_at,
       };
 
       await sessionManager.saveLpCaptureState(summonerName, summonerTag, newState);
-      console.log(`Captured starting LP: ${currentLp} at stream start: ${streamInfo.started_at}`);
+      console.log(`Captured starting LP: ${rankData.lp} at stream start: ${streamInfo.started_at}`);
     } else if (!isLive && wasLive) {
       // Stream went offline
       console.log(`Stream ${twitchChannel} went offline`);
@@ -202,20 +202,20 @@ async function handleScheduledLpCapture(env: Env): Promise<void> {
           summonerRegion
         );
 
-        const currentLp = await riotClient.getCurrentSoloQueueLp(
+        const rankData = await riotClient.getCurrentSoloQueueLp(
           account.puuid,
           summonerRegion
         );
 
         const newState: LpCaptureState = {
           wasLive: true,
-          capturedLp: currentLp,
+          capturedLp: rankData.lp,
           capturedAt: new Date().toISOString(),
           streamStartedAt: streamInfo.started_at,
         };
 
         await sessionManager.saveLpCaptureState(summonerName, summonerTag, newState);
-        console.log(`Captured starting LP: ${currentLp}`);
+        console.log(`Captured starting LP: ${rankData.lp}`);
       }
     }
   } catch (error) {

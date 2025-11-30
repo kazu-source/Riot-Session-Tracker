@@ -3,7 +3,7 @@ import { GameType, PlatformRegion } from "../../types";
 import { SessionManager } from "../../session-manager";
 import { RiotApiClient } from "../../riot-api";
 import { getStreamMatches, calculateRecord } from "../../match-filter";
-import { formatStreamRecord, formatOfflineRecord } from "./lol-formatter";
+import { formatStreamRecord, formatOfflineRecord, formatNoGamesYet } from "./lol-formatter";
 
 const RESPONSES = {
   NO_GAMES: "No ranked games this stream yet!",
@@ -25,12 +25,12 @@ export class LoLHandler implements GameHandler {
     const account = await riotClient.getAccountByRiotId(summoner, tag, region);
     console.log("LoL Account PUUID:", account.puuid);
 
-    // Get current LP for comparison
-    const currentLpResult = await riotClient.getCurrentSoloQueueLp(
+    // Get current rank data (LP, tier, rank, currentLp)
+    const rankData = await riotClient.getCurrentSoloQueueLp(
       account.puuid,
       region
     );
-    console.log("LoL Current LP result:", currentLpResult);
+    console.log("LoL Current rank data:", rankData);
 
     // Get matches since stream started
     const streamStartTimestamp = new Date(effectiveStreamStart).getTime();
@@ -61,12 +61,12 @@ export class LoLHandler implements GameHandler {
         startingLp = autoCapturedLp;
       } else if (gamesPlayed === 0) {
         // No games played yet - current LP IS the starting LP
-        console.log("No games played yet, capturing current LP as starting LP:", currentLpResult);
-        startingLp = currentLpResult;
+        console.log("No games played yet, capturing current LP as starting LP:", rankData.lp);
+        startingLp = rankData.lp;
       } else {
         // Games already played before first !record
         console.log("Games already played before first !record, LP tracking may be inaccurate");
-        startingLp = currentLpResult;
+        startingLp = rankData.lp;
       }
     } else {
       // For continued session, use stored starting LP
@@ -75,8 +75,8 @@ export class LoLHandler implements GameHandler {
 
     // Calculate LP change
     let lpChange: number | null = null;
-    if (startingLp !== null && currentLpResult !== null) {
-      lpChange = currentLpResult - startingLp;
+    if (startingLp !== null && rankData.lp !== null) {
+      lpChange = rankData.lp - startingLp;
     }
 
     // Update session
@@ -95,11 +95,19 @@ export class LoLHandler implements GameHandler {
 
     // Check if no games played
     if (wins === 0 && losses === 0) {
-      return { response: RESPONSES.NO_GAMES, session: updatedSession };
+      const response = formatNoGamesYet(rankData.tier, rankData.rank, rankData.currentLp);
+      return { response, session: updatedSession };
     }
 
-    // Return formatted response
-    const response = formatStreamRecord(wins, losses, lpChange);
+    // Return formatted response with rank
+    const response = formatStreamRecord(
+      wins,
+      losses,
+      lpChange,
+      rankData.tier,
+      rankData.rank,
+      rankData.currentLp
+    );
     return { response, session: updatedSession };
   }
 

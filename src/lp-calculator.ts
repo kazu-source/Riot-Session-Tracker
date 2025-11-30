@@ -14,19 +14,19 @@ export async function calculateLpChange(
   region: PlatformRegion,
   startingLp: number | null
 ): Promise<{ currentLp: number | null; lpChange: number | null }> {
-  const currentLp = await client.getCurrentSoloQueueLp(summonerId, region);
+  const rankData = await client.getCurrentSoloQueueLp(summonerId, region);
 
-  if (currentLp === null) {
+  if (rankData.lp === null) {
     return { currentLp: null, lpChange: null };
   }
 
   if (startingLp === null) {
     // No starting LP recorded yet, this is the start of session
-    return { currentLp, lpChange: null };
+    return { currentLp: rankData.lp, lpChange: null };
   }
 
-  const lpChange = currentLp - startingLp;
-  return { currentLp, lpChange };
+  const lpChange = rankData.lp - startingLp;
+  return { currentLp: rankData.lp, lpChange };
 }
 
 /**

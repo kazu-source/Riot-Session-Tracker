@@ -9,6 +9,14 @@ import {
   REGION_TO_ROUTE,
 } from "./types";
 
+// Rank data returned from getCurrentSoloQueueLp
+export interface RankData {
+  lp: number | null;        // Total calculated LP (for LP change tracking)
+  tier: string | null;      // e.g., "GOLD", "PLATINUM", "MASTER"
+  rank: string | null;      // e.g., "IV", "III", "II", "I" (null for Master+)
+  currentLp: number | null; // LP within current rank (0-100)
+}
+
 const CACHE_TTL = {
   PUUID: 86400,      // 24 hours - rarely changes
   SUMMONER: 3600,    // 1 hour
@@ -160,12 +168,12 @@ export class RiotApiClient {
   }
 
   /**
-   * Get current Solo/Duo LP
+   * Get current Solo/Duo rank data (LP, tier, rank, currentLp)
    */
   async getCurrentSoloQueueLp(
     puuid: string,
     region: PlatformRegion
-  ): Promise<number | null> {
+  ): Promise<RankData> {
     try {
       const entries = await this.getRankedStats(puuid, region);
       console.log("Ranked entries:", JSON.stringify(entries));
@@ -173,18 +181,24 @@ export class RiotApiClient {
 
       if (!soloQueue) {
         console.log("No RANKED_SOLO_5x5 found in entries");
-        return null;
+        return { lp: null, tier: null, rank: null, currentLp: null };
       }
       console.log("Solo queue data:", JSON.stringify(soloQueue));
 
       // Calculate total LP based on tier
       const tierLp = this.getTierBaseLp(soloQueue.tier);
       const rankLp = this.getRankLp(soloQueue.rank);
+      const totalLp = tierLp + rankLp + soloQueue.leaguePoints;
 
-      return tierLp + rankLp + soloQueue.leaguePoints;
+      return {
+        lp: totalLp,
+        tier: soloQueue.tier,
+        rank: soloQueue.rank,
+        currentLp: soloQueue.leaguePoints,
+      };
     } catch (error) {
       console.log("Error fetching ranked stats:", error);
-      return null;
+      return { lp: null, tier: null, rank: null, currentLp: null };
     }
   }
 
